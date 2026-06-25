@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Behandlungsvertrag</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --blue-mid: #378ADD;
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --border: #d0d0d0;
+    --bg: #f7f7f5;
+    --white: #ffffff;
+    --green: #3B6D11;
+    --green-light: #EAF3DE;
+    --red: #A32D2D;
+    --red-light: #FCEBEB;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--blue);
+    color: white;
+    padding: 20px 24px 16px;
+  }
+  .header-logo {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-bottom: 4px;
+  }
+  .header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* PROGRESS */
+  .progress-bar {
+    background: var(--white);
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .step-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600;
+    background: #e0e0e0; color: #888;
+    flex-shrink: 0;
+    transition: background 0.2s, color 0.2s;
+  }
+  .step-dot.active { background: var(--blue); color: white; }
+  .step-dot.done { background: var(--green); color: white; }
+  .step-line { flex: 1; height: 2px; background: #e0e0e0; border-radius: 1px; }
+  .step-line.done { background: var(--green); }
+
+  /* SECTIONS */
+  .section {
+    display: none;
+    padding: 24px 24px 120px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .section.active { display: block; }
+
+  .section-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--blue);
+    margin-bottom: 6px;
+  }
+  .section-sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+  }
+
+  /* FORM */
+  .form-group {
+    margin-bottom: 18px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 16px;
+    background: var(--white);
+    color: var(--text);
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--blue-mid);
+    box-shadow: 0 0 0 3px rgba(55,138,221,0.15);
+  }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 500px) { .form-row { grid-template-columns: 1fr; } }
+
+  /* VERTRAGSTEXT */
+  .contract-box {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+    margin-bottom: 20px;
+    max-height: 320px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .contract-box h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--blue);
+    margin: 16px 0 6px;
+  }
+  .contract-box h3:first-child { margin-top: 0; }
+  .contract-box p { margin-bottom: 10px; }
+  .contract-box strong { font-weight: 600; }
+
+  .scroll-hint {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  /* CHECKBOXES */
+  .check-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  .check-group.checked {
+    border-color: var(--green);
+    background: var(--green-light);
+  }
+  .check-group input[type="checkbox"] {
+    width: 22px; height: 22px;
+    flex-shrink: 0;
+    cursor: pointer;
+    margin-top: 1px;
+  }
+  .check-group span {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  /* UNTERSCHRIFT */
+  .sig-wrap {
+    background: var(--white);
+    border: 2px dashed var(--blue-mid);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 12px;
+    touch-action: none;
+  }
+  .sig-label {
+    position: absolute;
+    top: 10px; left: 14px;
+    font-size: 12px;
+    color: var(--blue-mid);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    pointer-events: none;
+    user-select: none;
+  }
+  .sig-hint {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 15px;
+    color: #ccc;
+    pointer-events: none;
+    user-select: none;
+    text-align: center;
+  }
+  canvas#sigCanvas {
+    display: block;
+    width: 100%;
+    height: 180px;
+    cursor: crosshair;
+    touch-action: none;
+  }
+  .sig-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .btn-clear {
+    padding: 10px 18px;
+    border: 1.5px solid var(--border);
+    background: var(--white);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-clear:active { background: #f0f0f0; }
+
+  /* BUTTONS */
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-primary:active { background: #134e8a; transform: scale(0.99); }
+  .btn-primary:disabled { background: #aaa; cursor: not-allowed; }
+
+  .btn-back {
+    width: 100%;
+    padding: 14px;
+    background: var(--white);
+    color: var(--text-muted);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  .btn-back:active { background: #f0f0f0; }
+
+  /* INFO BOX */
+  .info-box {
+    background: var(--blue-light);
+    border-left: 4px solid var(--blue);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--blue);
+    margin-bottom: 20px;
+  }
+
+  /* SUCCESS */
+  .success-icon {
+    width: 80px; height: 80px;
+    background: var(--green-light);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 40px;
+  }
+  .success-msg {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .success-msg h2 { font-size: 24px; font-weight: 600; margin-bottom: 8px; color: var(--green); }
+  .success-msg p { color: var(--text-muted); font-size: 15px; }
+
+  .summary-card {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 14px;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-row .lbl { color: var(--text-muted); }
+  .summary-row .val { font-weight: 500; }
+
+  .btn-pdf {
+    width: 100%;
+    padding: 16px;
+    background: var(--green);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-bottom: 12px;
+  }
+  .btn-pdf:active { background: #2d5509; }
+
+  .btn-new {
+    width: 100%;
+    padding: 14px;
+    background: var(--white);
+    color: var(--blue);
+    border: 1.5px solid var(--blue);
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* VALIDATION */
+  .error-msg { color: var(--red); font-size: 13px; margin-top: 6px; display: none; }
+  .field-error input, .field-error select { border-color: var(--red); }
+  .field-error .error-msg { display: block; }
+  .global-error {
+    background: var(--red-light);
+    border: 1.5px solid #f09595;
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--red);
+    font-size: 14px;
+    margin-bottom: 16px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">Physio &amp; Ergo</div>
+  <h1>Behandlungsvertrag</h1>
+</div>
+
+<div class="progress-bar">
+  <div class="step-dot active" id="dot1">1</div>
+  <div class="step-line" id="line12"></div>
+  <div class="step-dot" id="dot2">2</div>
+  <div class="step-line" id="line23"></div>
+  <div class="step-dot" id="dot3">3</div>
+  <div class="step-line" id="line34"></div>
+  <div class="step-dot" id="dot4">✓</div>
+</div>
+
+<!-- SCHRITT 1: Patientendaten -->
+<div class="section active" id="step1">
+  <p class="section-title">Ihre Daten</p>
+  <p class="section-sub">Bitte alle Felder ausfüllen</p>
+
+  <div class="form-row">
+    <div class="form-group" id="fg-vorname">
+      <label>Vorname *</label>
+      <input type="text" id="vorname" autocomplete="given-name" placeholder="z. B. Maria">
+      <div class="error-msg">Pflichtfeld</div>
+    </div>
+    <div class="form-group" id="fg-nachname">
+      <label>Nachname *</label>
+      <input type="text" id="nachname" autocomplete="family-name" placeholder="z. B. Mustermann">
+      <div class="error-msg">Pflichtfeld</div>
+    </div>
+  </div>
+
+  <div class="form-group" id="fg-geburt">
+    <label>Geburtsdatum *</label>
+    <input type="date" id="geburt" autocomplete="bday">
+    <div class="error-msg">Pflichtfeld</div>
+  </div>
+
+  <div class="form-group" id="fg-strasse">
+    <label>Straße und Hausnummer *</label>
+    <input type="text" id="strasse" autocomplete="street-address" placeholder="z. B. Musterstraße 12">
+    <div class="error-msg">Pflichtfeld</div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group" id="fg-plz">
+      <label>PLZ *</label>
+      <input type="text" id="plz" inputmode="numeric" maxlength="5" placeholder="z. B. 12345">
+      <div class="error-msg">Pflichtfeld</div>
+    </div>
+    <div class="form-group" id="fg-ort">
+      <label>Ort *</label>
+      <input type="text" id="ort" autocomplete="address-level2" placeholder="z. B. Musterstadt">
+      <div class="error-msg">Pflichtfeld</div>
+    </div>
+  </div>
+
+  <div class="form-group" id="fg-telefon">
+    <label>Telefon *</label>
+    <input type="tel" id="telefon" autocomplete="tel" placeholder="z. B. 0234 123456">
+    <div class="error-msg">Pflichtfeld</div>
+  </div>
+
+  <div class="form-group" id="fg-kasse">
+    <label>Krankenkasse *</label>
+    <input type="text" id="kasse" placeholder="z. B. AOK, TK, Barmer …">
+    <div class="error-msg">Pflichtfeld</div>
+  </div>
+
+  <div class="form-group" id="fg-typ">
+    <label>Versicherungsart *</label>
+    <select id="typ">
+      <option value="">Bitte wählen …</option>
+      <option value="GKV">Gesetzlich versichert (GKV)</option>
+      <option value="PKV">Privat versichert (PKV)</option>
+      <option value="Selbstzahler">Selbstzahler</option>
+    </select>
+    <div class="error-msg">Bitte auswählen</div>
+  </div>
+
+  <div id="globalErr1" class="global-error">Bitte alle Pflichtfelder ausfüllen.</div>
+  <button class="btn-primary" onclick="nextStep(1)">Weiter →</button>
+</div>
+
+<!-- SCHRITT 2: Vertragstext -->
+<div class="section" id="step2">
+  <p class="section-title">Behandlungsvertrag</p>
+  <p class="section-sub">Bitte vollständig lesen und bestätigen</p>
+
+  <div class="scroll-hint">↕ Bitte nach unten scrollen, um den gesamten Text zu lesen</div>
+
+  <div class="contract-box" id="contractBox">
+    <h3>§ 1 Vertragsgegenstand</h3>
+    <p>Dieser Behandlungsvertrag regelt die Zusammenarbeit zwischen der Praxis <strong>[Praxisname]</strong>, <strong>[Adresse]</strong> (nachfolgend „Praxis") und der unterzeichnenden Person (nachfolgend „Patient"). Die gesetzliche Grundlage bilden §§ 630a–630h BGB.</p>
+
+    <h3>§ 2 Leistungsumfang</h3>
+    <p>Die Praxis erbringt physiotherapeutische und/oder ergotherapeutische Leistungen gemäß ärztlicher Verordnung oder auf Selbstzahlerbasis. Art, Umfang, Dauer und Frequenz der Behandlung richten sich nach der jeweiligen Verordnung bzw. Vereinbarung.</p>
+
+    <h3>§ 3 Zuzahlung und Kosten</h3>
+    <p>Gesetzlich Versicherte (GKV) leisten eine Zuzahlung gemäß § 61 SGB V (10 % des Behandlungspreises, mind. 5 €, max. 10 € je Verordnung, zuzüglich 10 € Verordnungsgebühr). Privat Versicherte und Selbstzahler erhalten eine Honorarvereinbarung separat. Zuzahlungen sind unmittelbar nach jeder Behandlung zu entrichten.</p>
+
+    <h3>§ 4 Terminvereinbarung und Absagegebühr</h3>
+    <p>Die Praxis ist als <strong>Bestellpraxis</strong> organisiert. Jeder Termin wird exklusiv für den Patienten reserviert.</p>
+    <p><strong>Absagefrist:</strong> Termine müssen mindestens <strong>24 Stunden</strong> vor dem vereinbarten Zeitpunkt abgesagt werden. Maßgeblich ist der Eingang der Absage bei der Praxis (telefonisch während der Öffnungszeiten).</p>
+    <p><strong>Ausfallgebühr:</strong> Bei Nichteinhaltung der Absagefrist oder unentschuldigtem Nichterscheinen wird eine Ausfallgebühr in Höhe von <strong>[Betrag, z. B. 30 €]</strong> in Rechnung gestellt. Diese Gebühr wird von keiner Krankenkasse übernommen und ist vom Patienten selbst zu tragen. Rechtliche Grundlage: § 615 BGB.</p>
+    <p><strong>Kann der Termin durch die Praxis kurzfristig anderweitig belegt werden, entfällt die Gebühr.</strong></p>
+    <p>Beim ersten Ausfall wird aus Kulanz auf die Gebühr verzichtet; der Patient wird auf diese Regelung hingewiesen. Ausnahmen (z. B. Krankenhauseinweisung, Sterbefall) werden im Einzelfall kulant gehandhabt.</p>
+
+    <h3>§ 5 Pflichten des Patienten</h3>
+    <p>Der Patient verpflichtet sich, pünktlich zu erscheinen, behandlungsrelevante Informationen (Vorerkrankungen, Medikamente, Allergien) vollständig mitzuteilen sowie an einer geplanten Reha oder Parallelbehandlung die Praxis vorab zu informieren.</p>
+
+    <h3>§ 6 Datenschutz (DSGVO)</h3>
+    <p>Die Praxis verarbeitet personenbezogene und Gesundheitsdaten ausschließlich zur Durchführung des Behandlungsvertrages (Art. 9 Abs. 2 lit. h DSGVO i. V. m. § 22 BDSG). Eine Weitergabe an Dritte (z. B. Abrechnungsstelle) erfolgt nur mit ausdrücklicher Einwilligung. Ausführliche Datenschutzinformationen werden auf Wunsch ausgehändigt.</p>
+
+    <h3>§ 7 Laufzeit</h3>
+    <p>Dieser Vertrag gilt für alle Erst- und Folgeverordnungen sowie Selbstzahlerbehandlungen bis zu seiner Kündigung durch eine der Parteien. Bei wesentlichen Änderungen (z. B. neue Preise) wird eine aktualisierte Vereinbarung abgeschlossen.</p>
+  </div>
+
+  <div class="info-box">
+    Bitte bestätigen Sie durch Ankreuzen, dass Sie den Vertrag gelesen und verstanden haben.
+  </div>
+
+  <div class="check-group" id="cg1" onclick="toggleCheck('ch1','cg1')">
+    <input type="checkbox" id="ch1" onclick="event.stopPropagation()">
+    <span>Ich habe den Behandlungsvertrag vollständig gelesen und bin mit den Inhalten einverstanden.</span>
+  </div>
+
+  <div class="check-group" id="cg2" onclick="toggleCheck('ch2','cg2')">
+    <input type="checkbox" id="ch2" onclick="event.stopPropagation()">
+    <span>Ich wurde über die <strong>24-Stunden-Absageregelung</strong> und die Ausfallgebühr informiert und akzeptiere diese.</span>
+  </div>
+
+  <div class="check-group" id="cg3" onclick="toggleCheck('ch3','cg3')">
+    <input type="checkbox" id="ch3" onclick="event.stopPropagation()">
+    <span>Ich stimme der Verarbeitung meiner personenbezogenen Daten und Gesundheitsdaten zum Zweck der Behandlung zu (DSGVO).</span>
+  </div>
+
+  <div id="globalErr2" class="global-error">Bitte alle drei Punkte bestätigen.</div>
+  <button class="btn-primary" onclick="nextStep(2)">Weiter →</button>
+  <button class="btn-back" onclick="goBack(1)">← Zurück</button>
+</div>
+
+<!-- SCHRITT 3: Unterschrift -->
+<div class="section" id="step3">
+  <p class="section-title">Unterschrift</p>
+  <p class="section-sub">Bitte mit dem Finger oder einem Stift unterschreiben</p>
+
+  <div class="sig-wrap">
+    <span class="sig-label">Unterschrift Patient</span>
+    <span class="sig-hint" id="sigHint">Hier unterschreiben</span>
+    <canvas id="sigCanvas" width="1200" height="360"></canvas>
+  </div>
+
+  <div class="sig-actions">
+    <button class="btn-clear" onclick="clearSig()">✕ Löschen</button>
+  </div>
+
+  <div style="background: var(--white); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 16px; font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+    Datum: <strong id="datumAnzeige"></strong> &nbsp;·&nbsp; Uhrzeit: <strong id="zeitAnzeige"></strong>
+  </div>
+
+  <div id="globalErr3" class="global-error">Bitte unterschreiben Sie das Dokument.</div>
+  <button class="btn-primary" onclick="nextStep(3)">Vertrag abschließen ✓</button>
+  <button class="btn-back" onclick="goBack(2)">← Zurück</button>
+</div>
+
+<!-- SCHRITT 4: Fertig -->
+<div class="section" id="step4">
+  <div class="success-icon">✓</div>
+  <div class="success-msg">
+    <h2>Vertrag abgeschlossen</h2>
+    <p>Vielen Dank! Der Behandlungsvertrag wurde erfolgreich unterzeichnet.</p>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-row"><span class="lbl">Name</span><span class="val" id="sumName"></span></div>
+    <div class="summary-row"><span class="lbl">Geburtsdatum</span><span class="val" id="sumGeburt"></span></div>
+    <div class="summary-row"><span class="lbl">Versicherung</span><span class="val" id="sumKasse"></span></div>
+    <div class="summary-row"><span class="lbl">Unterzeichnet am</span><span class="val" id="sumDatum"></span></div>
+  </div>
+
+  <button class="btn-pdf" onclick="generatePDF()">⬇ PDF speichern / drucken</button>
+  <button class="btn-new" onclick="newPatient()">Nächster Patient</button>
+</div>
+
+<script>
+let sigCanvas = document.getElementById('sigCanvas');
+let ctx = sigCanvas.getContext('2d');
+let drawing = false;
+let hasSig = false;
+let signatureTimestamp = '';
+
+function setDatetime() {
+  const now = new Date();
+  const d = now.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const t = now.toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('datumAnzeige').textContent = d;
+  document.getElementById('zeitAnzeige').textContent = t + ' Uhr';
+  signatureTimestamp = d + ' um ' + t + ' Uhr';
+}
+
+function scaledCoords(e) {
+  const rect = sigCanvas.getBoundingClientRect();
+  const scaleX = sigCanvas.width / rect.width;
+  const scaleY = sigCanvas.height / rect.height;
+  let cx, cy;
+  if (e.touches) {
+    cx = (e.touches[0].clientX - rect.left) * scaleX;
+    cy = (e.touches[0].clientY - rect.top) * scaleY;
+  } else {
+    cx = (e.clientX - rect.left) * scaleX;
+    cy = (e.clientY - rect.top) * scaleY;
+  }
+  return { x: cx, y: cy };
+}
+
+sigCanvas.addEventListener('mousedown', e => { drawing = true; ctx.beginPath(); const p = scaledCoords(e); ctx.moveTo(p.x, p.y); });
+sigCanvas.addEventListener('mousemove', e => { if (!drawing) return; const p = scaledCoords(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(); hasSig = true; document.getElementById('sigHint').style.display = 'none'; });
+sigCanvas.addEventListener('mouseup', () => drawing = false);
+sigCanvas.addEventListener('mouseleave', () => drawing = false);
+
+sigCanvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; ctx.beginPath(); const p = scaledCoords(e); ctx.moveTo(p.x, p.y); }, { passive: false });
+sigCanvas.addEventListener('touchmove', e => { e.preventDefault(); if (!drawing) return; const p = scaledCoords(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(); hasSig = true; document.getElementById('sigHint').style.display = 'none'; }, { passive: false });
+sigCanvas.addEventListener('touchend', () => drawing = false);
+
+function clearSig() {
+  ctx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+  hasSig = false;
+  document.getElementById('sigHint').style.display = 'block';
+}
+
+function toggleCheck(id, cgId) {
+  const cb = document.getElementById(id);
+  cb.checked = !cb.checked;
+  document.getElementById(cgId).classList.toggle('checked', cb.checked);
+}
+
+function showSection(n) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('step' + n).classList.add('active');
+  window.scrollTo(0, 0);
+  updateDots(n);
+}
+
+function updateDots(current) {
+  for (let i = 1; i <= 4; i++) {
+    const dot = document.getElementById('dot' + i);
+    if (!dot) continue;
+    dot.classList.remove('active', 'done');
+    if (i < current) dot.classList.add('done');
+    else if (i === current) dot.classList.add('active');
+  }
+  for (let i = 1; i <= 3; i++) {
+    const line = document.getElementById('line' + i + (i + 1));
+    if (line) line.classList.toggle('done', i < current);
+  }
+}
+
+function validateStep1() {
+  const fields = ['vorname','nachname','geburt','strasse','plz','ort','telefon','kasse'];
+  let ok = true;
+  fields.forEach(f => {
+    const fg = document.getElementById('fg-' + f);
+    const val = document.getElementById(f).value.trim();
+    if (!val) { fg.classList.add('field-error'); ok = false; }
+    else fg.classList.remove('field-error');
+  });
+  const typFg = document.getElementById('fg-typ');
+  if (!document.getElementById('typ').value) { typFg.classList.add('field-error'); ok = false; }
+  else typFg.classList.remove('field-error');
+  document.getElementById('globalErr1').style.display = ok ? 'none' : 'block';
+  return ok;
+}
+
+function nextStep(from) {
+  if (from === 1) {
+    if (!validateStep1()) return;
+    showSection(2);
+  } else if (from === 2) {
+    const c1 = document.getElementById('ch1').checked;
+    const c2 = document.getElementById('ch2').checked;
+    const c3 = document.getElementById('ch3').checked;
+    if (!c1 || !c2 || !c3) { document.getElementById('globalErr2').style.display = 'block'; return; }
+    document.getElementById('globalErr2').style.display = 'none';
+    setDatetime();
+    showSection(3);
+  } else if (from === 3) {
+    if (!hasSig) { document.getElementById('globalErr3').style.display = 'block'; return; }
+    document.getElementById('globalErr3').style.display = 'none';
+    fillSummary();
+    showSection(4);
+  }
+}
+
+function goBack(to) { showSection(to); }
+
+function fillSummary() {
+  const vn = document.getElementById('vorname').value.trim();
+  const nn = document.getElementById('nachname').value.trim();
+  const gb = document.getElementById('geburt').value;
+  const kasse = document.getElementById('kasse').value.trim();
+  const typ = document.getElementById('typ').value;
+  const gbFmt = gb ? new Date(gb).toLocaleDateString('de-DE') : '';
+  document.getElementById('sumName').textContent = vn + ' ' + nn;
+  document.getElementById('sumGeburt').textContent = gbFmt;
+  document.getElementById('sumKasse').textContent = kasse + ' (' + typ + ')';
+  document.getElementById('sumDatum').textContent = signatureTimestamp;
+}
+
+function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const vn = document.getElementById('vorname').value.trim();
+  const nn = document.getElementById('nachname').value.trim();
+  const gb = document.getElementById('geburt').value;
+  const str = document.getElementById('strasse').value.trim();
+  const plz = document.getElementById('plz').value.trim();
+  const ort = document.getElementById('ort').value.trim();
+  const tel = document.getElementById('telefon').value.trim();
+  const kasse = document.getElementById('kasse').value.trim();
+  const typ = document.getElementById('typ').value;
+  const gbFmt = gb ? new Date(gb).toLocaleDateString('de-DE') : '';
+
+  const blue = [24, 95, 165];
+  const textDark = [26, 26, 26];
+  const textMuted = [100, 100, 100];
+  const lm = 20; const rm = 190;
+
+  doc.setFillColor(...blue);
+  doc.rect(0, 0, 210, 30, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.text('PHYSIO & ERGO — BEHANDLUNGSVERTRAG', lm, 12);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Behandlungsvertrag', lm, 22);
+
+  let y = 42;
+  doc.setTextColor(...textDark);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Patientendaten', lm, y);
+  y += 6;
+  doc.setDrawColor(24, 95, 165);
+  doc.setLineWidth(0.5);
+  doc.line(lm, y, rm, y);
+  y += 7;
+
+  function row(label, value) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...textMuted);
+    doc.text(label, lm, y);
+    doc.setTextColor(...textDark);
+    doc.text(value || '—', lm + 45, y);
+    y += 6;
+  }
+
+  row('Name', vn + ' ' + nn);
+  row('Geburtsdatum', gbFmt);
+  row('Adresse', str + ', ' + plz + ' ' + ort);
+  row('Telefon', tel);
+  row('Krankenkasse', kasse + ' (' + typ + ')');
+
+  y += 6;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...textDark);
+  doc.text('Vertragsinhalt (Zusammenfassung)', lm, y);
+  y += 5;
+  doc.setLineWidth(0.5);
+  doc.setDrawColor(24, 95, 165);
+  doc.line(lm, y, rm, y);
+  y += 7;
+
+  const paragraphs = [
+    ['§ 1 Vertragsgegenstand', 'Dieser Behandlungsvertrag regelt die Zusammenarbeit gemäß §§ 630a–630h BGB zwischen der Praxis [Praxisname] und dem Patienten.'],
+    ['§ 2 Leistungsumfang', 'Erbringung physiotherapeutischer und/oder ergotherapeutischer Leistungen gemäß ärztlicher Verordnung oder als Selbstzahlerleistung.'],
+    ['§ 3 Zuzahlung', 'GKV: 10 % des Behandlungspreises (mind. 5 €, max. 10 €) zzgl. 10 € Verordnungsgebühr. PKV/Selbstzahler: gemäß separater Honorarvereinbarung.'],
+    ['§ 4 Absagegebühr', 'Termine müssen 24 Stunden vorher abgesagt werden. Bei Nichteinhaltung fällt eine Ausfallgebühr von [Betrag] an (§ 615 BGB). Beim 1. Ausfall wird aus Kulanz darauf verzichtet.'],
+    ['§ 5 Patientenpflichten', 'Pünktlichkeit, vollständige Informationspflicht zu Vorerkrankungen, Medikamenten und Parallelbehandlungen.'],
+    ['§ 6 Datenschutz', 'Datenverarbeitung ausschließlich zur Behandlungsdurchführung (Art. 9 Abs. 2 lit. h DSGVO, § 22 BDSG). Weitergabe nur mit schriftlicher Einwilligung.'],
+    ['§ 7 Laufzeit', 'Gilt für alle Erst- und Folgeverordnungen bis zur Kündigung durch eine der Parteien.'],
+  ];
+
+  paragraphs.forEach(([title, text]) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...blue);
+    doc.text(title, lm, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...textDark);
+    const lines = doc.splitTextToSize(text, rm - lm);
+    doc.text(lines, lm, y);
+    y += lines.length * 4.5 + 4;
+  });
+
+  y += 4;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...textDark);
+  doc.text('Bestätigungen', lm, y);
+  y += 5;
+  doc.setLineWidth(0.5);
+  doc.line(lm, y, rm, y);
+  y += 7;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  const confirms = [
+    '✓  Behandlungsvertrag vollständig gelesen und akzeptiert.',
+    '✓  Über die 24-Stunden-Absageregelung und Ausfallgebühr informiert und einverstanden.',
+    '✓  Einwilligung zur Verarbeitung personenbezogener Daten und Gesundheitsdaten (DSGVO).',
+  ];
+  confirms.forEach(c => { doc.text(c, lm, y); y += 6; });
+
+  y += 6;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('Unterschrift', lm, y);
+  y += 5;
+  doc.setLineWidth(0.5);
+  doc.line(lm, y, rm, y);
+  y += 6;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...textMuted);
+  doc.text('Unterzeichnet am: ' + signatureTimestamp, lm, y);
+  y += 8;
+
+  const sigData = sigCanvas.toDataURL('image/png');
+  const sigH = 25;
+  const sigW = sigH * (sigCanvas.width / sigCanvas.height);
+  doc.addImage(sigData, 'PNG', lm, y, Math.min(sigW, 90), sigH);
+  y += sigH + 4;
+
+  doc.setLineWidth(0.4);
+  doc.setDrawColor(...textMuted);
+  doc.line(lm, y, lm + 90, y);
+  y += 5;
+  doc.setFontSize(8.5);
+  doc.text(vn + ' ' + nn, lm, y);
+
+  doc.setFontSize(7);
+  doc.setTextColor(...textMuted);
+  doc.text('Praxis [Name] · [Adresse] · Dieses Dokument ist rechtsgültig unterzeichnet.', 105, 292, { align: 'center' });
+
+  const filename = 'Behandlungsvertrag_' + nn + '_' + vn + '_' + new Date().toISOString().slice(0,10) + '.pdf';
+  doc.save(filename);
+}
+
+function newPatient() {
+  document.querySelectorAll('input[type="text"], input[type="tel"], input[type="date"]').forEach(i => i.value = '');
+  document.getElementById('typ').value = '';
+  document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.check-group').forEach(cg => cg.classList.remove('checked'));
+  document.querySelectorAll('.field-error').forEach(e => e.classList.remove('field-error'));
+  document.querySelectorAll('.global-error').forEach(e => e.style.display = 'none');
+  clearSig();
+  showSection(1);
+}
+
+setDatetime();
+</script>
+</body>
+</html>
